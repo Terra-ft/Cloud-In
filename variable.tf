@@ -4,7 +4,7 @@ variable "Evirument" {
 }
 variable "ami" {
   type    = string
-  default = "ami-0866a3c8686eaeeba"
+  default = "ami-036841078a4b68e14"
 }
 variable "publicipa" {
   type    = bool
