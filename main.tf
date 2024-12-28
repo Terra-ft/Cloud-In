@@ -119,4 +119,82 @@ resource "aws_instance" "njinx_server" {
     Name = "wedapp"
   }
 }
-  
+  resource "aws_ami_from_instance" "aws_ami" {
+  name               = "instanceami"
+  source_instance_id = aws_instance.njinx_server.id
+}
+resource "aws_launch_template" "app" {
+  name = "app-launch-template"
+
+  image_id      = aws_ami_from_instance.aws_ami.id # Replace with your AMI ID
+  instance_type = var.size
+
+  network_interfaces {
+    associate_public_ip_address = var.publicipa
+    security_groups             = [aws_security_group.allow.id]
+    subnet_id                   = module.vpc.public_subnets[0] # Pick one subnet
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "webapp"
+    }
+  }
+
+  tags = {
+    Name = "app-launch-template"
+  }
+}
+
+resource "aws_autoscaling_group" "autowebapp" {
+  launch_template {
+    id      = aws_launch_template.app.id
+    version = "$Latest"
+  }
+
+  vpc_zone_identifier = module.vpc.public_subnets
+
+  min_size                  = 3
+  max_size                  = 4
+  desired_capacity          = 3
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+
+  target_group_arns = [aws_lb_target_group.webapptg.arn]
+
+  tag {
+    key                 = "Name"
+    value               = "webapp-asg-instance"
+    propagate_at_launch = true
+  }
+}
+
+
+resource "aws_lb" "mywedapp" {
+  name               = "mywedapp"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow.id]
+  subnets            = module.vpc.public_subnets
+
+}
+
+resource "aws_lb_target_group" "webapptg" {
+  name     = "myappweb"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = module.vpc.vpc_id
+}
+resource "aws_lb_listener" "app_listener" {
+  load_balancer_arn = aws_lb.mywedapp.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.webapptg.arn
+  }
+
+}

@@ -12,7 +12,7 @@ variable "publicipa" {
 
 }
 variable "size" {
-  default = "t2.micro"
+  default = "t2.large"
 }
 variable "cidr_blo" {
   default = ["0.0.0.0/0"]
